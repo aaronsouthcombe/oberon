@@ -1,7 +1,7 @@
 # Oberon
 
 <div align="center">
-<img src="https://github.com/aaronsouthcombe/oberon/assets/141771153/2cd02000-7873-4d18-a5c8-e8422b83bf01" style="width:50%;">
+<img src="https://github.com/aaronsouthcombe/oberon/assets/141771153/2cd02000-7873-4d18-a5c8-e8422b83bf01" style="width:25%;">
 </div>
 
 ### What is Oberon?
