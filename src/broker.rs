@@ -19,8 +19,6 @@ pub async fn message_broker(mut globalbroker_reciever: mpsc::UnboundedReceiver<B
                 client_names.insert(client_name, new_id);
                     ()
             }
-            BrokerMessage::Unregister(client) => {}
-            BrokerMessage::Command(id, command) => {}
             BrokerMessage::Message(id, dst_name, msg) => {
                 let &dst_id = client_names.get(&dst_name).unwrap();
                 let sender = clients.get(&dst_id);

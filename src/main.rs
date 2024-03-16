@@ -9,15 +9,12 @@ mod client;
 
 enum BrokerMessage {
     Register { client_name: String, client_chan: mpsc::UnboundedSender<ClientMessage>},
-    Unregister(u32),
-    Command(u32, String),
     Message(u32, String, String)
 }
 
 enum ClientMessage {
     ClientId(u32),
     Message { content: String },
-    CommandResponse { command_response: String },
 }
 
 
@@ -40,8 +37,8 @@ async fn main() -> io::Result<()> {
         match listener.accept().await {
             // If Ok, MOVE the TcpStream created from the listener.accept into the handle_client,
             // along with the corresponding addr (plus error handling).
-            Ok((client_stream, client_addr)) => { tokio::spawn(async move {
-                match handle_client(client_stream, client_addr, client_sender).await {
+            Ok((client_stream, _client_addr)) => { tokio::spawn(async move {
+                match handle_client(client_stream, client_sender).await {
                     Ok(_) => println!("Handled successfully"),
                     Err(_) => eprintln!("Client handle failed")
                 }

@@ -1,20 +1,12 @@
 use tokio::net::TcpStream;
 use tokio::net::tcp::{OwnedWriteHalf, OwnedReadHalf};
-use std::net::SocketAddr;
 use tokio::sync::mpsc;
 use tokio::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::{BrokerMessage, ClientMessage};
 
-#[derive(Debug)]
-enum ClientState {
-    Registered(u32),
-    Unregistered,
-}
-
-
-pub async fn handle_client(client_stream: TcpStream, client_addr: SocketAddr, client_sender: mpsc::UnboundedSender<BrokerMessage>) -> io::Result<()> {
+pub async fn handle_client(client_stream: TcpStream, client_sender: mpsc::UnboundedSender<BrokerMessage>) -> io::Result<()> {
     let (mut tcp_read, tcp_write) = client_stream.into_split();
     let (broker_sender, mut client_receiver) = mpsc::unbounded_channel();
     let mut buffer = [0; 1024];
@@ -53,7 +45,7 @@ pub async fn handle_client(client_stream: TcpStream, client_addr: SocketAddr, cl
         client_tx(tcp_write, client_receiver).await;
     });
     tokio::spawn( async move {
-        client_rx(tcp_read, client_sender, broker_sender, client_id).await;
+        client_rx(tcp_read, client_sender, client_id).await;
     });
     Ok(())
 }
@@ -75,7 +67,7 @@ async fn client_tx(mut client_stream: OwnedWriteHalf, mut client_receiver: mpsc:
     }
 }
 
-async fn client_rx(mut client_stream: OwnedReadHalf, client_sender: mpsc::UnboundedSender<BrokerMessage>, broker_sender: mpsc::UnboundedSender<ClientMessage>, client_id: u32) {
+async fn client_rx(mut client_stream: OwnedReadHalf, client_sender: mpsc::UnboundedSender<BrokerMessage>, client_id: u32) {
     // We move the logic of sending to the broker and interpreting incoming messages here once 
     // the client handler has finished registering.
     let mut buffer = [0; 1024];
