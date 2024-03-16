@@ -59,13 +59,20 @@ pub async fn handle_client(client_stream: TcpStream, client_addr: SocketAddr, cl
 }
 
 
-async fn client_tx(mut client_stream: OwnedWriteHalf, client_receiver: mpsc::UnboundedReceiver<ClientMessage>) {
+async fn client_tx(mut client_stream: OwnedWriteHalf, mut client_receiver: mpsc::UnboundedReceiver<ClientMessage>) {
     // This function will just accept traffic from the broker and send it to the client. I wonder
     // if just making the broker send traffic through tcp straight to the client is better...?
     // At any rate, we aren't doing much inefficient stuff, cloning the tcpstream handle is 
     // really lightweight, as its just another reference to the heap living tcpstream.
     //
-    let _ = client_stream.write_all(b"Welcome to Oberon, please state your username:").await;
+    while let Some(message) = client_receiver.recv().await {
+        match message {
+            ClientMessage::Message { content } => {
+                let _ = client_stream.write_all(content.as_bytes()).await;
+            }
+            _ => {println!("Unhandled behaviour on client transmitter");}
+        }
+    }
 }
 
 async fn client_rx(mut client_stream: OwnedReadHalf, client_sender: mpsc::UnboundedSender<BrokerMessage>, broker_sender: mpsc::UnboundedSender<ClientMessage>, client_id: u32) {
@@ -82,9 +89,11 @@ async fn client_rx(mut client_stream: OwnedReadHalf, client_sender: mpsc::Unboun
 
             Ok(n) => {
                 if let Ok(client_text) = std::str::from_utf8(&buffer[..n]) {
-                    let trim_newline = client_text.trim_end_matches('\n');
-                    println!("cli_msg: {}", trim_newline);
-                    let _ = client_sender.send(BrokerMessage::Message(client_id, trim_newline.to_string()));
+                    // let trim_newline = client_text.trim_end_matches('\n');
+                    println!("cli_msg: {}", client_text);
+                    if let Some((dest_name, dest_msg)) = parse_message(client_text) {
+                        let _ = client_sender.send(BrokerMessage::Message(client_id, dest_name, dest_msg.to_string()));
+                    }
                 } else {
                     eprintln!("Text is not valid utf8");
                 }
@@ -93,4 +102,11 @@ async fn client_rx(mut client_stream: OwnedReadHalf, client_sender: mpsc::Unboun
             _ => {println!("Unknown error in msg loop");}
         }
     }
+}
+
+fn parse_message(input: &str) -> Option<(String, &str)> {
+    let re = regex::Regex::new(r"^%%(.*?)%%(.*)").unwrap();
+    re.captures(input).map(|caps| {
+        (caps[1].to_string(), caps.get(2).map_or("", |m| m.as_str()))
+    })
 }

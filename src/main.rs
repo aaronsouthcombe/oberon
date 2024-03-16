@@ -11,7 +11,7 @@ enum BrokerMessage {
     Register { client_name: String, client_chan: mpsc::UnboundedSender<ClientMessage>},
     Unregister(u32),
     Command(u32, String),
-    Message(u32, String)
+    Message(u32, String, String)
 }
 
 enum ClientMessage {
