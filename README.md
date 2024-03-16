@@ -12,10 +12,18 @@ Oberon is a fast, asynchronous chat application that utilizes tokio and mpsc to 
 ### Current state of development:
 
 #### Done:
-+ Client registration implemented
-+ Connections handled
-+ mpsc logic fully implemented
-#### Missing:
+- Client registration implemented
+- Connections handled
+- mpsc logic fully implemented
 - Message handling
-- Client connection and commands
+- Client connection
 - Disconnection
+#### To-do:
+- Debugging and error handling
+- Troubleshooting why some TCP clients receive messages and others don't
+
+
+### Fully functional using NetCat!
+Connect to the server and the format is:
+- First message is a string used to identify you
+- All subsequent messages are formatted as follows: %%<destination>%%<message> where destination is the receiver's ID string previously specified.
