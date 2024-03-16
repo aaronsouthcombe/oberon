@@ -5,7 +5,16 @@ use tokio::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::{BrokerMessage, ClientMessage};
-
+/* This module is the client handler. It serves three purposes. The first, is splitting the
+ * tcpstream into an rx and tx channel. Then, it creates the necessary mpsc channel for the client
+ * handlers to be able to send messages to the broker uniquely, and be able to receive messages
+ * from the broker. This is pretty cool, due to the fact that you can selectively broadcast
+ * messages depending on channel. Once these are created, it performs its final function,
+ * registering the user via the mpsc channel. This is essentially just telling the broker that
+ * there is a new client with name X and channel Y, and it expects ID Z back. After all this, it
+ * spawns the tx and rx handler which will listen independently and run the logic to indefinately
+ * exchange messages with their client and the broker.
+*/
 pub async fn handle_client(client_stream: TcpStream, client_sender: mpsc::UnboundedSender<BrokerMessage>) -> io::Result<()> {
     let (mut tcp_read, tcp_write) = client_stream.into_split();
     let (broker_sender, mut client_receiver) = mpsc::unbounded_channel();
@@ -13,6 +22,8 @@ pub async fn handle_client(client_stream: TcpStream, client_sender: mpsc::Unboun
     let mut client_id: u32 = 0;
 
 
+    // Simple registration logic, use the BrokerMessage::Register type to send the info to the
+    // broker for it to register this client, or act accordingly.
     match tcp_read.read(&mut buffer).await {
         Ok(0) => {
             println!("The client has closed the connection.");
@@ -41,6 +52,7 @@ pub async fn handle_client(client_stream: TcpStream, client_sender: mpsc::Unboun
         _ => {println!("Unknown error in registration");}
     }
 
+    // Spawn and move. All values necessary get moved into their functions.
     tokio::spawn( async move {
         client_tx(tcp_write, client_receiver).await;
     });
@@ -52,11 +64,8 @@ pub async fn handle_client(client_stream: TcpStream, client_sender: mpsc::Unboun
 
 
 async fn client_tx(mut client_stream: OwnedWriteHalf, mut client_receiver: mpsc::UnboundedReceiver<ClientMessage>) {
-    // This function will just accept traffic from the broker and send it to the client. I wonder
-    // if just making the broker send traffic through tcp straight to the client is better...?
-    // At any rate, we aren't doing much inefficient stuff, cloning the tcpstream handle is 
-    // really lightweight, as its just another reference to the heap living tcpstream.
-    //
+
+    // Here we just relay messages from the broker to the client's tcp stream.
     while let Some(message) = client_receiver.recv().await {
         match message {
             ClientMessage::Message { content } => {
@@ -68,8 +77,9 @@ async fn client_tx(mut client_stream: OwnedWriteHalf, mut client_receiver: mpsc:
 }
 
 async fn client_rx(mut client_stream: OwnedReadHalf, client_sender: mpsc::UnboundedSender<BrokerMessage>, client_id: u32) {
-    // We move the logic of sending to the broker and interpreting incoming messages here once 
-    // the client handler has finished registering.
+
+    // Given a registered client, we parse the dest client id from the incoming message, then
+    // forward the data to the broker through its mpsc channel.
     let mut buffer = [0; 1024];
 
     loop {
@@ -96,6 +106,8 @@ async fn client_rx(mut client_stream: OwnedReadHalf, client_sender: mpsc::Unboun
     }
 }
 
+
+// This function is really just so I can move the somewhat ugly regex away from the handler.
 fn parse_message(input: &str) -> Option<(String, &str)> {
     let re = regex::Regex::new(r"^%%(.*?)%%(.*)").unwrap();
     re.captures(input).map(|caps| {
