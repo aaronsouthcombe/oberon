@@ -13,7 +13,7 @@ pub async fn message_broker(mut globalbroker_reciever: mpsc::UnboundedReceiver<B
         match message {
             BrokerMessage::Register{ client_name, client_chan }  => {
                 let new_id = CLIENT_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
-                println!("New client registered: {}", new_id);
+                println!("New client registered, ID: {}, Name: {}", new_id, client_name);
                 client_chan.send(ClientMessage::ClientId(new_id));
                 clients.insert(new_id, client_chan);
                 client_names.insert(new_id, client_name);

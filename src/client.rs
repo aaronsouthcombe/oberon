@@ -15,13 +15,45 @@ enum ClientState {
 
 
 pub async fn handle_client(client_stream: TcpStream, client_addr: SocketAddr, client_sender: mpsc::UnboundedSender<BrokerMessage>) -> io::Result<()> {
-    let (tcp_read, tcp_write) = client_stream.into_split();
-    let (broker_sender, client_receiver) = mpsc::unbounded_channel();
-   tokio::spawn( async move {
+    let (mut tcp_read, tcp_write) = client_stream.into_split();
+    let (broker_sender, mut client_receiver) = mpsc::unbounded_channel();
+    let mut buffer = [0; 1024];
+    let mut client_id: u32 = 0;
+
+
+    match tcp_read.read(&mut buffer).await {
+        Ok(0) => {
+            println!("The client has closed the connection.");
+        }
+        Ok(n) => {
+            if let Ok(client_text) = std::str::from_utf8(&buffer[..n]) {
+                let trim_newline = client_text.trim_end_matches('\n');
+                println!("cli_hand: {}", trim_newline);
+                let _ = client_sender.send(BrokerMessage::Register{client_name: trim_newline.to_string(), client_chan: broker_sender.clone()});
+                while let Some(message) = client_receiver.recv().await {
+                    match message {
+                        ClientMessage::ClientId(new_id) => {
+                            client_id = new_id;
+                            break
+                        }
+                        
+                        _ => {eprintln!("Error collecting new registration");}
+                    }
+                }
+            } else {
+                eprintln!("Text is not valid utf8");
+            }
+
+        }
+
+        _ => {println!("Unknown error in registration");}
+    }
+
+    tokio::spawn( async move {
         client_tx(tcp_write, client_receiver).await;
     });
     tokio::spawn( async move {
-        client_rx(tcp_read, client_sender, broker_sender).await;
+        client_rx(tcp_read, client_sender, broker_sender, client_id).await;
     });
     Ok(())
 }
@@ -36,29 +68,29 @@ async fn client_tx(mut client_stream: OwnedWriteHalf, client_receiver: mpsc::Unb
     let _ = client_stream.write_all(b"Welcome to Oberon, please state your username:").await;
 }
 
-async fn client_rx(mut client_stream: OwnedReadHalf, client_sender: mpsc::UnboundedSender<BrokerMessage>, broker_sender: mpsc::UnboundedSender<ClientMessage>) {
+async fn client_rx(mut client_stream: OwnedReadHalf, client_sender: mpsc::UnboundedSender<BrokerMessage>, broker_sender: mpsc::UnboundedSender<ClientMessage>, client_id: u32) {
     // We move the logic of sending to the broker and interpreting incoming messages here once 
     // the client handler has finished registering.
     let mut buffer = [0; 1024];
-    let mut client_id: u32 = 0;
-    
 
-    while let Ok(client_bytes) = client_stream.read(&mut buffer).await {
-        match client_bytes {
-            0 => {
-                println!("The client appears to have closed the connection.");
+    loop {
+        match client_stream.read(&mut buffer).await {
+            Ok(0) => {
+                println!("The client has closed the connection.");
                 return ()
             }
-            n => {
+
+            Ok(n) => {
                 if let Ok(client_text) = std::str::from_utf8(&buffer[..n]) {
                     let trim_newline = client_text.trim_end_matches('\n');
-                    println!("client sent: {}", trim_newline);
-                    // let _ = client_sender.send(BrokerMessage::Register{client_name: trim_newline.to_string(), client_chan: broker_sender.clone()});
+                    println!("cli_msg: {}", trim_newline);
+                    let _ = client_sender.send(BrokerMessage::Message(client_id, trim_newline.to_string()));
                 } else {
                     eprintln!("Text is not valid utf8");
                 }
-
             }
+            
+            _ => {println!("Unknown error in msg loop");}
         }
     }
 }
