@@ -23,7 +23,7 @@ async fn main() -> io::Result<()> {
 
     // First create a TcpListener that will listen for connections.
     let listener = TcpListener::bind("127.0.0.1:8000").await?;
-    
+    println!("Listening on 127.0.0.1:8000");    
     let (globalbroker_sender, globalbroker_reciever) = mpsc::unbounded_channel::<BrokerMessage>();
 
     tokio::spawn(async move {

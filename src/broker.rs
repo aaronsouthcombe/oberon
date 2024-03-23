@@ -32,10 +32,14 @@ pub async fn message_broker(mut globalbroker_reciever: mpsc::UnboundedReceiver<B
             BrokerMessage::Message(id, dst_name, msg) => {
 
                 // Simple code to send the message to the corresponding client.
+                println!("from {} to {}: {}", id, dst_name, msg);
+                for (key, value) in &client_names {
+                    println!("{}: {}", key, value);
+                }
                 let &dst_id = client_names.get(&dst_name).unwrap();
+                println!("Toid {}", dst_id);
                 let sender = clients.get(&dst_id);
                 sender.unwrap().send(ClientMessage::Message { content: msg.to_string() }).unwrap();
-                println!("from {} to {}: {}", id, dst_name, msg);
             }
         };
     }
