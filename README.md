@@ -21,7 +21,7 @@ Oberon is a fast, asynchronous chat application that utilizes tokio and mpsc to 
 #### To-do:
 - Debugging and error handling
 - Troubleshooting why some TCP clients receive messages and others don't
-
+- PROTOBUFS!!!
 
 ### Fully functional using NetCat!
 Connect to the server and the format is:
