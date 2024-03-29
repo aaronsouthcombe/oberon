@@ -9,21 +9,17 @@
 
 Oberon is a fast, asynchronous chat application that utilizes tokio and mpsc to divide and handle concurrent users into sessions and conversations and allows features such as registration, user access control, whispering and more.
 
-### Current state of development:
+It is not intended to actually be used in production environments, it was a fun project to explore more or less what apache kafka does. There is almost no error handling and no real return types due to this.
 
-#### Done:
-- Client registration implemented
-- Connections handled
-- mpsc logic fully implemented
-- Message handling
+#### Features:
+- Client registration 
+- Connections 
+- mpsc logic for message brokering
 - Client connection
-- Disconnection
-#### To-do:
-- Debugging and error handling
-- Troubleshooting why some TCP clients receive messages and others don't
-- PROTOBUFS!!!
 
 ### Fully functional using NetCat!
 Connect to the server and the format is:
 - First message is a string used to identify you
-- All subsequent messages are formatted as follows: %%<destination>%%<message> where destination is the receiver's ID string previously specified.
+- All subsequent messages are formatted as follows: %%destination%%message where destination is the receiver's ID string previously specified.
+
+Note: The reason it's selective based on tcp clients is the format that they send messages with, e.g. \r\n\r\n vs \r\n or just plain \r.

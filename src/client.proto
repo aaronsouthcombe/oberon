@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package oberon;
+
+message ClientMessage {
+	uint32 ClientId = 1;
+	string Message = 2;
+}
