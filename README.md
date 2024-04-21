@@ -7,7 +7,7 @@
 ### What is Oberon?
 
 
-Oberon is a fast, asynchronous chat application that utilizes tokio and mpsc to divide and handle concurrent users into sessions and conversations and allows features such as registration, user access control, whispering and more.
+Oberon is a fast, asynchronous message broker that utilizes tokio and mpsc to divide and handle concurrent users into sessions and conversations and allows features such as registration, user access control, whispering and more.
 
 It is not intended to actually be used in production environments, it was a fun project to explore more or less what apache kafka does. There is almost no error handling and no real return types due to this.
 
